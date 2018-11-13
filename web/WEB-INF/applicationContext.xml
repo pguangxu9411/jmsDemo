@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans  xmlns="http://www.springframework.org/schema/beans"  
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:context="http://www.springframework.org/schema/context" 
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:jee="http://www.springframework.org/schema/jee"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans 	      
+        http://www.springframework.org/schema/beans/spring-beans-4.2.xsd 
+        http://www.springframework.org/schema/context 		    
+        http://www.springframework.org/schema/context/spring-context-4.2.xsd
+        http://www.springframework.org/schema/mvc 
+        http://www.springframework.org/schema/mvc/spring-mvc-4.2.xsd
+        http://www.springframework.org/schema/jee 
+	http://www.springframework.org/schema/jee/spring-jee-4.2.xsd">  
+
+    <context:property-placeholder location="classpath:config.properties"/>
+    
+    <!-- JndiTemplate -->  
+    <bean id="jndiTemplate" class="org.springframework.jndi.JndiTemplate">  
+        <property name="environment">  
+            <props>  
+                <prop key="java.naming.factory.initial">${jms.context}</prop>  
+                <prop key="java.naming.provider.url">${jms.url}</prop>
+            </props>  
+        </property>  
+    </bean>  
+    
+    <!--ConnectionFactory 连接工厂-->
+    <bean id="connectionFactory" class="org.springframework.jndi.JndiObjectFactoryBean">  
+        <property name="jndiName">  
+            <value>${jms.factory}</value>
+        </property>  
+        <property name="jndiTemplate" ref="jndiTemplate"></property>  
+    </bean>  
+    <!--Destination 消息目的地-->
+    <bean id="destination" class="org.springframework.jndi.JndiObjectFactoryBean">  
+        <property name="jndiName">  
+            <value>${jms.queue}</value>  
+        </property>  
+        <property name="jndiTemplate" ref="jndiTemplate"></property>  
+    </bean>  
+    <!--JmsTemplate-->
+    <bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+        <property name="connectionFactory" ref="connectionFactory"></property>
+        <property name="defaultDestination" ref="destination"></property>
+    </bean>
+    
+    <!--JMS消息发送 -->
+    <bean id="jmsSender" class="com.wzh.jms.JmsSender">
+        <property name="jmsTemplate" ref="jmsTemplate"></property>
+    </bean>
+    <!--JMS消息接收 -->
+    <bean id="jmsReceiver" class="com.wzh.jms.JmsReceiver"></bean>
+    <!-- ListenerContainer 消息监听器-->  
+    <bean id="listenerContainer"  class="org.springframework.jms.listener.DefaultMessageListenerContainer">  
+        <property name="connectionFactory" ref="connectionFactory"></property>
+        <property name="destination" ref="destination"></property>
+        <property name="messageListener" ref="jmsReceiver"></property>
+        <!--设置固定的线程数-->
+        <property name="concurrentConsumers" value="5"></property>
+        <!--设置动态的线程数-->
+        <property name="concurrency" value="3-10"></property>
+        <!--设置最大线程数-->
+        <property name="maxConcurrentConsumers" value="100"></property>
+    </bean>
+</beans>
